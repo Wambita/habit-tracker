@@ -1,0 +1,16 @@
+// Example logic
+if (input.includes('water')) {
+  const water = state.wellness.water;
+  response += water < 6 ? `You've had ${water} glasses today. Try to reach 8! 💧` : 'Great job staying hydrated!';
+} else if (input.includes('sleep')) {
+  const hasBedtime = !!state.wellness.sleep.bedtime;
+  response += hasBedtime ? 'Consistent bedtime helps maintain your circadian rhythm!' : 'Set a consistent bedtime for better sleep quality!';
+} else if (input.includes('streak')) {
+  response += `Current streak: ${state.streaks.current} days. Keep going! 🔥`;
+} else {
+  // Default tips based on wellness completion
+  const wellnessComplete = checkWellnessCompletion();
+  response += wellnessComplete ? 'Amazing job completing all wellness goals today!' : 'Complete your wellness goals to maintain your streak!';
+}
+
+return response + " 😊";
