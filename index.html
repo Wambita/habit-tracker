@@ -1,0 +1,147 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreakTracker+</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>StreakTracker+ 🔥</h1>
+    <button class="theme-toggle">
+      <svg class="moon" viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/></svg>
+    </button>
+    <div class="streak-header">
+      <span id="overall-streak">Current Streak: 0 days</span>
+      <span id="longest-streak">Record: 0 days</span>
+      <div id="encouragement-message" class="encouragement"></div>
+    </div>
+  </header>
+  <div class="chatbot-container">
+    <button class="chatbot-toggle">💬</button>
+    <div class="chatbot-window">
+      <div class="chat-header">
+        <h4>Wellness Assistant</h4>
+        <button class="close-chat">×</button>
+      </div>
+      <div class="chat-messages"></div>
+      <div class="ai-typing-indicator">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <div class="chat-input">
+        <input type="text" placeholder="Ask for tips..." id="chat-input">
+        <button class="send-msg">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="notifications-container"></div>
+
+  <nav class="routine-tabs">
+    <button class="add-routine-btn">+</button>
+  </nav>
+
+  <main>
+    <section class="wellness-tracker">
+      <div class="wellness-card">
+        <h3>💧 Water Intake <span class="daily-reset">(resets daily)</span></h3>
+        <div class="water-tracker">
+          <button class="water-btn">-</button>
+          <span class="water-count">0</span>/8 glasses
+          <button class="water-btn">+</button>
+        </div>
+      </div>
+
+      <div class="wellness-card">
+        <h3>🍎 Meals <span class="daily-reset">(resets daily)</span></h3>
+        <div class="meal-tracker">
+          <label><input type="checkbox" class="meal-check"> Breakfast</label>
+          <label><input type="checkbox" class="meal-check"> Lunch</label>
+          <label><input type="checkbox" class="meal-check"> Dinner</label>
+        </div>
+      </div>
+
+      <div class="wellness-card">
+        <h3>🛌 Sleep Tracking <span class="daily-reset">(resets daily)</span></h3>
+        <div class="sleep-box">
+          <div class="sleep-input-group">
+            <label for="bedtime">Bedtime:</label>
+            <input type="time" class="sleep-input" id="bedtime">
+          </div>
+          <div class="sleep-input-group">
+            <label for="waketime">Wake Time:</label>
+            <input type="time" class="sleep-input" id="waketime">
+          </div>
+        </div>
+      </div>
+      <div class="wellness-card">
+        <h3>🧠 AI Wellness Insights</h3>
+        <ul id="weekly-ai-insights" class="ai-insights">
+          <li>Analyzing your week... 🌟</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="analytics">
+      <h2>📊 Weekly Progress</h2>
+      <div class="progress-bars">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+      <div id="weekly-stats"></div>
+    </section>
+
+    <section class="analytics">
+      <h2>📈 Weekly Insights</h2>
+      <div class="insights-grid">
+        <div class="insight-card">
+          <div class="metric-label">Weekly Completion</div>
+          <div class="insight-metric" id="completion-rate">0%</div>
+          <div class="progress-circle">
+            <svg viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--success)" 
+                      id="completion-rate-circle" stroke-width="8" stroke-dasharray="0 283"
+                      stroke-linecap="round" style="transform: rotate(-90deg); transform-origin: 50% 50%;"/>
+            </svg>
+          </div>
+          <div id="weekly-encouragement" class="encouragement"></div>
+        </div>
+
+        <div class="insight-card">
+          <h3>🌱 Wellness Consistency</h3>
+          <div class="metric-label">Hydration:</div>
+          <div class="insight-metric" id="water-consistency">0/7 days</div>
+          <div class="metric-label">Balanced Meals:</div>
+          <div class="insight-metric" id="meal-consistency">0/7 days</div>
+          <div class="metric-label">Sleep Tracking:</div>
+          <div class="insight-metric" id="sleep-consistency">0/7 days</div>
+          <div id="weekly-insight-tip" class="encouragement"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="routine-modal" class="modal">
+    <div class="modal-content">
+      <h3>New Routine</h3>
+      <input type="text" id="routine-name" placeholder="Enter routine name">
+      <div class="modal-actions">
+        <button id="cancel-routine">Cancel</button>
+        <button id="save-routine">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add SVG theme icons -->
+  <svg style="display:none;">
+    <symbol id="moon" viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/></symbol>
+    <symbol id="sun" viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121z"/></symbol>
+  </svg>
+
+  <script src="app.js"></script>
+</body>
+</html>
