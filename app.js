@@ -30,21 +30,32 @@ function initializeTheme() {
   document.documentElement.setAttribute('data-theme', savedTheme);
   
   const themeToggle = document.querySelector('.theme-toggle');
+  if (!themeToggle) {
+    setTimeout(initializeTheme, 500); // Retry after delay
+    return;
+  }
+  
   themeToggle.innerHTML = savedTheme === 'dark' ? 
-    '<svg class="sun" viewBox="0 0 24 24"><use href="#sun"/></svg>' :
-    '<svg class="moon" viewBox="0 0 24 24"><use href="#moon"/></svg>';
+    '<svg viewBox="0 0 24 24"><use href="#sun"/></svg>' :
+    '<svg viewBox="0 0 24 24"><use href="#moon"/></svg>';
 
-  themeToggle.addEventListener('click', () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    themeToggle.innerHTML = newTheme === 'dark' ?
-      '<svg class="sun" viewBox="0 0 24 24"><use href="#sun"/></svg>' :
-      '<svg class="moon" viewBox="0 0 24 24"><use href="#moon"/></svg>';
-    
-    localStorage.setItem('theme', newTheme);
-  });
+  themeToggle.addEventListener('click', handleThemeToggle);
+  themeToggle.addEventListener('touchstart', handleThemeToggle);
+}
+
+function handleThemeToggle(e) {
+  e.preventDefault();
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  
+  document.documentElement.setAttribute('data-theme', newTheme);
+  const themeToggle = document.querySelector('.theme-toggle');
+  
+  themeToggle.innerHTML = newTheme === 'dark' ?
+    '<svg viewBox="0 0 24 24"><use href="#sun"/></svg>' :
+    '<svg viewBox="0 0 24 24"><use href="#moon"/></svg>';
+
+  localStorage.setItem('theme', newTheme);
 }
 
 // LocalStorage management
@@ -101,13 +112,15 @@ function updateTask(routineName, index, newText) {
 
 // UI Rendering
 function renderTabs() {
-  const tabsContainer = document.querySelector('.routine-tabs')
-  tabsContainer.querySelectorAll('.tab:not(.add-routine-btn)').forEach(tab => tab.remove())
+  const tabsContainer = document.querySelector('.routine-tabs');
+  if (!tabsContainer) return; // Add null check
+  
+  tabsContainer.querySelectorAll('.tab:not(.add-routine-btn)').forEach(tab => tab.remove());
 
   Object.keys(state.routines).forEach(routine => {
     const tab = document.createElement('button')
     tab.className = 'tab'
-    tab.dataset.routine = routine
+    tab.dataset.routine = routine // Store original name in dataset
     tab.innerHTML = `
       ${routine}
       <svg class="edit-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -118,6 +131,9 @@ function renderTabs() {
 }
 
 function renderRoutineSections() {
+  const main = document.querySelector('main');
+  if (!main) return; // Add main element check
+  
   Object.keys(state.routines).forEach(routine => {
     if (!document.getElementById(`${sanitizeId(routine)}-routine`)) {
       createRoutineSection(routine)
@@ -131,6 +147,7 @@ function createRoutineSection(routine) {
   const section = document.createElement('section')
   section.className = 'routine-section'
   section.id = `${sanitized}-routine`
+  section.dataset.routineName = routine; // Add dataset for original name
   
   section.innerHTML = `
     <h2>${routine}</h2>
@@ -172,30 +189,41 @@ function createTaskList(routine) {
 document.addEventListener('click', (e) => {
   // Delete routine
   if (e.target.closest('.delete-icon')) {
-    const routine = e.target.closest('.tab').dataset.routine
-    if (confirm(`Delete "${routine}" routine?`)) deleteRoutine(routine)
+    const tab = e.target.closest('.tab');
+    if (tab?.dataset?.routine) {
+      if (confirm(`Delete "${tab.dataset.routine}" routine?`)) {
+        deleteRoutine(tab.dataset.routine);
+      }
+    }
   }
   
   // Edit routine name
   if (e.target.closest('.edit-icon')) {
-    const newName = prompt('Enter new routine name:', e.target.closest('.tab').dataset.routine)
-    if (newName) {
-      const oldName = e.target.closest('.tab').dataset.routine
-      state.routines[newName] = state.routines[oldName]
-      delete state.routines[oldName]
-      saveState()
-      renderTabs()
-      renderRoutineSections()
+    const tab = e.target.closest('.tab');
+    if (tab?.dataset?.routine) {
+      const newName = prompt('Enter new routine name:', tab.dataset.routine);
+      if (newName) {
+        const oldName = tab.dataset.routine;
+        state.routines[newName] = state.routines[oldName];
+        delete state.routines[oldName];
+        saveState();
+        renderTabs();
+        renderRoutineSections();
+      }
     }
   }
   
-  // Add task
+  // Add task - UPDATED
   if (e.target.closest('.add-task-btn')) {
-    const input = e.target.previousElementSibling
-    const routine = e.target.closest('.routine-section').id.replace('-routine', '')
-    addTaskToRoutine(routine, input.value.trim())
-    input.value = ''
-    createTaskList(routine)
+    const section = e.target.closest('.routine-section');
+    const input = section.querySelector('.add-task input');
+    const routine = section.dataset.routineName;
+    
+    if (input.value.trim()) {
+      addTaskToRoutine(routine, input.value.trim());
+      input.value = '';
+      createTaskList(routine);
+    }
   }
   
   // Edit task
@@ -219,6 +247,20 @@ document.addEventListener('click', (e) => {
       deleteTask(routine, index)
       createTaskList(routine)
     }
+  }
+})
+
+// Update task checkbox handling
+document.addEventListener('change', (e) => {
+  if (e.target.matches('input[type="checkbox"]')) {
+    const section = e.target.closest('.routine-section');
+    const routine = section.dataset.routineName; // Use dataset
+    const index = e.target.dataset.index;
+    
+    state.routines[routine][index].completed = e.target.checked;
+    updateStreaks();
+    saveState();
+    updateStreakDisplay();
   }
 })
 
@@ -254,9 +296,17 @@ function resetDailyWellness() {
 
 // Updated wellness tracking with auto-save
 function setupWellnessTracking() {
+  // Add null checks for all wellness elements
+  const waterBtns = document.querySelectorAll('.water-btn');
+  if (waterBtns.length === 0) return;
+  
+  const mealChecks = document.querySelectorAll('.meal-check');
+  const sleepInputs = document.querySelectorAll('.sleep-input');
+  
   // Water tracking
-  document.querySelectorAll('.water-btn').forEach(btn => {
+  waterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!btn) return;
       const delta = btn.textContent === '+' ? 1 : -1;
       state.wellness.water = Math.max(0, state.wellness.water + delta);
       const waterCount = document.querySelector('.water-count');
@@ -267,8 +317,9 @@ function setupWellnessTracking() {
   });
 
   // Meal tracking
-  document.querySelectorAll('.meal-check').forEach(checkbox => {
+  mealChecks.forEach(checkbox => {
     checkbox.addEventListener('change', e => {
+      if (!e.target) return;
       const mealType = e.target.nextSibling.textContent.trim().toLowerCase();
       state.wellness.meals[mealType] = e.target.checked;
       saveState();
@@ -277,8 +328,9 @@ function setupWellnessTracking() {
   });
 
   // Sleep tracking
-  document.querySelectorAll('.sleep-input').forEach(input => {
+  sleepInputs.forEach(input => {
     input.addEventListener('change', e => {
+      if (!e.target) return;
       const type = e.target.id;
       state.wellness.sleep[type] = e.target.value;
       saveState();
@@ -328,14 +380,14 @@ function checkWellnessStreak() {
 // Analytics
 function updateProgress() {
   const progressFill = document.querySelector('.progress-fill');
-  if (progressFill) {
-    const completed = document.querySelectorAll('input:checked').length;
-    const total = document.querySelectorAll('input[type="checkbox"]').length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    progressFill.style.width = `${percent}%`;
-    const weeklyStats = document.getElementById('weekly-stats');
-    if (weeklyStats) weeklyStats.textContent = `Completion: ${percent}% | Water: ${state.wellness.water} glasses`;
-  }
+  if (!progressFill) return;
+  
+  const completed = document.querySelectorAll('input:checked').length;
+  const total = document.querySelectorAll('input[type="checkbox"]').length;
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  progressFill.style.width = `${percent}%`;
+  const weeklyStats = document.getElementById('weekly-stats');
+  if (weeklyStats) weeklyStats.textContent = `Completion: ${percent}% | Water: ${state.wellness.water} glasses`;
 }
 
 function updateStreakDisplay() {
@@ -373,13 +425,14 @@ function updateStreaks() {
 // Event listeners for checkboxes
 document.addEventListener('change', (e) => {
   if (e.target.matches('input[type="checkbox"]')) {
-    const index = e.target.dataset.index
-    const routine = e.target.closest('.routine-section').id.replace('-routine', '')
-    state.routines[routine][index].completed = e.target.checked
-    updateStreaks()
-    state.streaks.lastCompleted = new Date().toISOString()
-    saveState()
-    updateStreakDisplay()
+    const section = e.target.closest('.routine-section');
+    const routine = section.dataset.routineName; // Use dataset
+    const index = e.target.dataset.index;
+    
+    state.routines[routine][index].completed = e.target.checked;
+    updateStreaks();
+    saveState();
+    updateStreakDisplay();
   }
 })
 
@@ -448,13 +501,15 @@ async function generateResponse(input) {
 async function generateWeeklyInsights() {
   const now = new Date();
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  if (!state.weeklyHistory) return;
+  
   const weekData = state.weeklyHistory.filter(day => 
     new Date(day.date) <= now && new Date(day.date) >= oneWeekAgo
   );
 
   if (weekData.length === 0) return;
 
-  // Parse task percentages and handle 0 case
   const validData = weekData.filter(day => day.taskCompletion !== '0%');
   const totalCompletion = validData.reduce((sum, day) => {
     return sum + parseInt(day.taskCompletion);
@@ -462,20 +517,16 @@ async function generateWeeklyInsights() {
   const avgCompletion = validData.length > 0 ? 
     Math.round(totalCompletion / validData.length) : 0;
 
-  // Water consistency calculation
   const waterDays = weekData.filter(day => day.water >= 8).length;
   
-  // Meal consistency calculation
   const mealDays = weekData.filter(day => 
     Object.values(day.meals).every(Boolean)
   ).length;
   
-  // Sleep consistency calculation
   const sleepDays = weekData.filter(day => 
     day.sleep.bedtime && day.sleep.waketime
   ).length;
 
-  // Progress circle calculations
   const completionCircle = document.querySelector('#completion-rate-circle');
   if (completionCircle) {
     const circumference = 2 * Math.PI * 45;
@@ -483,7 +534,6 @@ async function generateWeeklyInsights() {
     completionCircle.style.strokeDasharray = `${dashValue} ${circumference}`;
   }
 
-  // Update DOM elements
   document.getElementById('completion-rate').textContent = `${avgCompletion}%`;
   document.getElementById('water-consistency').textContent = `${waterDays}/${weekData.length}`;
   document.getElementById('meal-consistency').textContent = `${mealDays}/${weekData.length}`;
@@ -547,34 +597,33 @@ function showNotification(message) {
 
 // Update wellness sync
 function syncWellnessUI() {
-  document.querySelector('.water-count').textContent = state.wellness.water;
+  const waterCount = document.querySelector('.water-count');
+  if (waterCount) waterCount.textContent = state.wellness.water;
+  
   document.querySelectorAll('.meal-check').forEach((checkbox, index) => {
     checkbox.checked = Object.values(state.wellness.meals)[index];
   });
-  document.getElementById('bedtime').value = state.wellness.sleep.bedtime || '';
-  document.getElementById('waketime').value = state.wellness.sleep.waketime || '';
+
+  const bedtime = document.getElementById('bedtime');
+  if (bedtime) bedtime.value = state.wellness.sleep.bedtime || '';
+  
+  const waketime = document.getElementById('waketime');
+  if (waketime) waketime.value = state.wellness.sleep.waketime || '';
 }
 
 function initializeChatbot() {
   const toggle = document.querySelector('.chatbot-toggle');
   const window = document.querySelector('.chatbot-window');
-  const closeBtn = document.querySelector('.close-chat');
-  const sendBtn = document.querySelector('.send-msg');
-  const input = document.querySelector('#chat-input');
-
-  if (!toggle || !window) return;
-
-  toggle.addEventListener('click', () => {
+  
+  if (!toggle || !window) {
+    setTimeout(initializeChatbot, 1000); // Retry after 1 second
+    return;
+  }
+  
+  toggle.addEventListener('touchstart', (e) => {
+    e.preventDefault();
     window.classList.toggle('active');
-    if (window.classList.contains('active') && document.querySelectorAll('.chat-messages .msg').length === 0) {
-      showInitialTips();
-    }
   });
-
-  closeBtn.addEventListener('click', () => window.classList.remove('active'));
-
-  sendBtn.addEventListener('click', handleMessage);
-  input.addEventListener('keypress', e => e.key === 'Enter' && handleMessage());
 
   async function handleMessage() {
     const msg = input.value.trim();
@@ -584,16 +633,23 @@ function initializeChatbot() {
     input.value = '';
     
     const typing = document.querySelector('.ai-typing-indicator');
-    typing.classList.add('visible');
+    typing?.classList.add('visible');
 
     try {
       const response = await generateResponse(msg);
       addMessage(response, 'bot');
     } catch (error) {
-      addMessage("Let's focus on building healthy habits! 💪", 'bot');
+      const fallback = getFallbackResponse();
+      addMessage(fallback, 'bot');
     }
     
-    typing.classList.remove('visible');
+    typing?.classList.remove('visible');
+  }
+
+  function getFallbackResponse() {
+    const progress = document.querySelector('.progress-fill')?.style.width || '0%';
+    const randomIndex = Math.floor(Math.random() * state.encouragements.length);
+    return `${state.encouragements[randomIndex]} Current completion: ${progress} 😊`;
   }
 
   function addMessage(text, type) {
@@ -621,14 +677,40 @@ function initializeChatbot() {
     
     initialTips.forEach(tip => addMessage(tip, 'bot'));
   }
+
+  toggle.addEventListener('click', () => {
+    window.classList.toggle('active');
+    if (window.classList.contains('active') && document.querySelectorAll('.chat-messages .msg').length === 0) {
+      showInitialTips();
+    }
+  });
+
+  const closeBtn = document.querySelector('.close-chat');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => window.classList.remove('active'));
+  }
+
+  const sendBtn = document.querySelector('.send-msg');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', handleMessage);
+  }
+
+  const input = document.querySelector('#chat-input');
+  if (input) {
+    input.addEventListener('keypress', e => e.key === 'Enter' && handleMessage());
+  }
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', function() {
-  initializeApp();
-})
+// Add mobile viewport height fix
+function fixMobileViewport() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
 
+// Update initializeApp
 function initializeApp() {
+  fixMobileViewport();
+  window.addEventListener('resize', fixMobileViewport);
   initializeTheme();
   initializeStorage();
   loadState();
@@ -636,38 +718,52 @@ function initializeApp() {
   renderRoutineSections();
   setupWellnessTracking();
   scheduleDailyReset();
-  setInterval(updateProgress, 1000);
+  
+  if (document.querySelector('.progress-fill')) {
+    setInterval(updateProgress, 1000);
+  }
+  
   updateStreakDisplay();
   checkWellnessStreak();
 
+  // Add null checks for modal elements
   const addRoutineBtn = document.querySelector('.add-routine-btn');
   const cancelBtn = document.getElementById('cancel-routine');
   const saveBtn = document.getElementById('save-routine');
 
   if (addRoutineBtn) {
     addRoutineBtn.addEventListener('click', () => {
-      document.getElementById('routine-modal').style.display = 'block';
+      const modal = document.getElementById('routine-modal');
+      if (modal) modal.style.display = 'block';
     });
   }
 
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
-      document.getElementById('routine-modal').style.display = 'none';
+      const modal = document.getElementById('routine-modal');
+      if (modal) modal.style.display = 'none';
     });
   }
 
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      const name = document.getElementById('routine-name').value.trim();
-      if (name) {
-        addRoutine(name);
-        document.getElementById('routine-modal').style.display = 'none';
+      const nameInput = document.getElementById('routine-name');
+      if (nameInput) {
+        const name = nameInput.value.trim();
+        if (name) {
+          addRoutine(name);
+          const modal = document.getElementById('routine-modal');
+          if (modal) modal.style.display = 'none';
+        }
       }
     });
   }
 
-  setInterval(updateEncouragement, 60000 * 60); 
-  updateEncouragement();
+  // Add safe interval check
+  if (document.getElementById('encouragement-message')) {
+    setInterval(updateEncouragement, 60000 * 60);
+    updateEncouragement();
+  }
   
   syncWellnessUI();
   checkStreakNotifications();
@@ -681,3 +777,12 @@ function updateEncouragement() {
   const randomIndex = Math.floor(Math.random() * state.encouragements.length);
   encouragementEl.textContent = state.encouragements[randomIndex];
 }
+
+// Init
+document.addEventListener('DOMContentLoaded', function() {
+  if (!document.querySelector('main') || !document.querySelector('header')) {
+    setTimeout(arguments.callee, 500); // Retry if DOM not ready
+    return;
+  }
+  initializeApp();
+})

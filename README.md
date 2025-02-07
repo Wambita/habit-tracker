@@ -35,6 +35,6 @@ A habit tracking progressive web app with wellness integration, AI-powered insig
 
 ### Installation
 ```bash
-git clone https://github.com/Wambita/habit-tracker.git
+git clone https://github.com/yourusername/streaktracker-plus.git
 cd streaktracker-plus
 # No build required - just open index.html!
